@@ -1,0 +1,13 @@
+[package]
+name = "tm1637"
+version = "0.0.1"
+authors = ["Sergey Vakhurin <igelbox@gmail.com>"]
+description = "A platform agnostic driver to a LED-display powered by the TM1637 chip"
+keywords = ["embedded", "embedded-hal-driver"]
+categories = ["embedded", "hardware-support", "no-std"]
+license = "MIT"
+repository = "https://github.com/igelbox/tm1637-rs"
+
+[dependencies.embedded-hal]
+features = ["unproven"]
+version = "0.2.2"
