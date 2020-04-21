@@ -6,25 +6,6 @@ extern crate embedded_hal as hal;
 use hal::blocking::delay::DelayUs;
 use hal::digital::v2::{InputPin, OutputPin};
 
-const MAX_FREQ_KHZ: u16 = 500;
-const USECS_IN_MSEC: u16 = 1_000;
-const DELAY_USECS: u16 = USECS_IN_MSEC / MAX_FREQ_KHZ;
-
-const ADDRESS_AUTO_INCREMENT_1_MODE: u8 = 0x40;
-
-const ADDRESS_COMMAND_BITS: u8 = 0xc0;
-const ADDRESS_COMMAND_MASK: u8 = 0x0f;
-
-const DISPLAY_CONTROL_BRIGHTNESS_BITS: u8 = 0x88;
-const DISPLAY_CONTROL_BRIGHTNESS_MASK: u8 = 0x07;
-
-const DIGITS: [u8; 16] = [
-    0x3f, 0x06, 0x5b, 0x4f, //
-    0x66, 0x6d, 0x7d, 0x07, //
-    0x7f, 0x6f, 0x77, 0x7c, //
-    0x39, 0x5e, 0x79, 0x71, //
-];
-
 #[derive(Debug)]
 pub enum Error {
     Ack,
@@ -145,3 +126,22 @@ where
         self.delay.delay_us(DELAY_USECS);
     }
 }
+
+const MAX_FREQ_KHZ: u16 = 500;
+const USECS_IN_MSEC: u16 = 1_000;
+const DELAY_USECS: u16 = USECS_IN_MSEC / MAX_FREQ_KHZ;
+
+const ADDRESS_AUTO_INCREMENT_1_MODE: u8 = 0x40;
+
+const ADDRESS_COMMAND_BITS: u8 = 0xc0;
+const ADDRESS_COMMAND_MASK: u8 = 0x0f;
+
+const DISPLAY_CONTROL_BRIGHTNESS_BITS: u8 = 0x88;
+const DISPLAY_CONTROL_BRIGHTNESS_MASK: u8 = 0x07;
+
+const DIGITS: [u8; 16] = [
+    0x3f, 0x06, 0x5b, 0x4f, //
+    0x66, 0x6d, 0x7d, 0x07, //
+    0x7f, 0x6f, 0x77, 0x7c, //
+    0x39, 0x5e, 0x79, 0x71, //
+];
