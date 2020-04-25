@@ -26,6 +26,11 @@ pub struct TM1637<'a, CLK, DIO, D> {
     delay: &'a mut D,
 }
 
+enum Bit {
+    ZERO,
+    ONE,
+}
+
 impl<'a, CLK, DIO, D, E> TM1637<'a, CLK, DIO, D>
 where
     CLK: OutputPin<Error = E>,
@@ -84,21 +89,13 @@ where
     fn send(&mut self, byte: u8) -> Res<E> {
         let mut rest = byte;
         for _ in 0..8 {
-            self.clk.set_low()?;
-            if rest & 1 != 0 {
-                self.dio.set_high()?;
-            } else {
-                self.dio.set_low()?;
-            }
+            let bit = if rest & 1 != 0 { Bit::ONE } else { Bit::ZERO };
+            self.send_bit_and_delay(bit)?;
             rest = rest >> 1;
-            self.clk.set_high()?;
-            self.delay();
         }
 
         // Wait for the ACK
-        self.clk.set_low()?;
-        self.dio.set_high()?;
-        self.clk.set_high()?;
+        self.send_bit_and_delay(Bit::ONE)?;
         for _ in 0..255 {
             if self.dio.is_low()? {
                 return Ok(());
@@ -110,21 +107,28 @@ where
     }
 
     fn start(&mut self) -> Res<E> {
-        self.clk.set_low()?;
-        self.dio.set_high()?;
-        self.clk.set_high()?;
-        self.delay();
+        self.send_bit_and_delay(Bit::ONE)?;
         self.dio.set_low()?;
 
         Ok(())
     }
 
     fn stop(&mut self) -> Res<E> {
-        self.clk.set_low()?;
-        self.dio.set_low()?;
-        self.clk.set_high()?;
-        self.delay();
+        self.send_bit_and_delay(Bit::ZERO)?;
         self.dio.set_high()?;
+        self.delay();
+
+        Ok(())
+    }
+
+    fn send_bit_and_delay(&mut self, value: Bit) -> Res<E> {
+        self.clk.set_low()?;
+        if let Bit::ONE = value {
+            self.dio.set_high()?;
+        } else {
+            self.dio.set_low()?;
+        }
+        self.clk.set_high()?;
         self.delay();
 
         Ok(())

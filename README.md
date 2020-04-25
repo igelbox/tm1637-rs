@@ -16,7 +16,7 @@ debug = true
 lto = true
 opt-level = 'z'
 ```
-_\* 620 bytes in case if the real HAL delay is used._
+_\* 580 bytes in case if the real HAL delay is used._
 
 
 ## Working Example
