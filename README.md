@@ -1,4 +1,4 @@
-# `TM1639`
+# `TM1637`
 > A platform agnostic driver to a LED-display powered by the TM1637 chip
 
 ## What works

@@ -4,12 +4,21 @@
 extern crate embedded_hal as hal;
 
 use hal::blocking::delay::DelayUs;
-use hal::digital::{InputPin, OutputPin};
+use hal::digital::v2::{InputPin, OutputPin};
 
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<E> {
     Ack,
+    IO(E),
 }
+
+impl<E> From<E> for Error<E> {
+    fn from(err: E) -> Error<E> {
+        Error::IO(err)
+    }
+}
+
+type Res<E> = Result<(), Error<E>>;
 
 pub struct TM1637<'a, CLK, DIO, D> {
     clk: &'a mut CLK,
@@ -17,32 +26,33 @@ pub struct TM1637<'a, CLK, DIO, D> {
     delay: &'a mut D,
 }
 
-impl<'a, CLK, DIO, D> TM1637<'a, CLK, DIO, D>
+impl<'a, CLK, DIO, D, E> TM1637<'a, CLK, DIO, D>
 where
-    CLK: OutputPin,
-    DIO: InputPin + OutputPin,
+    CLK: OutputPin<Error = E>,
+    DIO: InputPin<Error = E> + OutputPin<Error = E>,
     D: DelayUs<u16>,
 {
     pub fn new(clk: &'a mut CLK, dio: &'a mut DIO, delay: &'a mut D) -> Self {
         Self { clk, dio, delay }
     }
 
-    pub fn init(&mut self) -> Result<(), Error> {
-        self.start();
+    pub fn init(&mut self) -> Res<E> {
+        self.start()?;
         self.send(ADDRESS_AUTO_INCREMENT_1_MODE)?;
-        self.stop();
+        self.stop()?;
+
         Ok(())
     }
 
-    pub fn clear(&mut self) -> Result<(), Error> {
+    pub fn clear(&mut self) -> Res<E> {
         self.print_raw_iter(0, core::iter::repeat(0).take(4))
     }
 
-    pub fn print_raw(&mut self, address: u8, bytes: &[u8]) -> Result<(), Error> {
+    pub fn print_raw(&mut self, address: u8, bytes: &[u8]) -> Res<E> {
         self.print_raw_iter(address, bytes.iter().map(|b| *b))
     }
 
-    pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Result<(), Error> {
+    pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Res<E> {
         self.print_raw_iter(
             address,
             digits.iter().map(|digit| DIGITS[(digit & 0xf) as usize]),
@@ -53,43 +63,44 @@ where
         &mut self,
         address: u8,
         bytes: Iter,
-    ) -> Result<(), Error> {
-        self.start();
+    ) -> Res<E> {
+        self.start()?;
         self.send(ADDRESS_COMMAND_BITS | (address & ADDRESS_COMMAND_MASK))?;
         for byte in bytes {
             self.send(byte)?;
         }
-        self.stop();
+        self.stop()?;
         Ok(())
     }
 
-    pub fn set_brightness(&mut self, level: u8) -> Result<(), Error> {
-        self.start();
+    pub fn set_brightness(&mut self, level: u8) -> Res<E> {
+        self.start()?;
         self.send(DISPLAY_CONTROL_BRIGHTNESS_BITS | (level & DISPLAY_CONTROL_BRIGHTNESS_MASK))?;
-        self.stop();
+        self.stop()?;
+
         Ok(())
     }
 
-    fn send(&mut self, byte: u8) -> Result<(), Error> {
+    fn send(&mut self, byte: u8) -> Res<E> {
         let mut rest = byte;
         for _ in 0..8 {
-            self.clk.set_low();
+            self.clk.set_low()?;
             if rest & 1 != 0 {
-                self.dio.set_high()
+                self.dio.set_high()?;
             } else {
-                self.dio.set_low()
+                self.dio.set_low()?;
             }
             rest = rest >> 1;
-            self.clk.set_high();
+            self.clk.set_high()?;
             self.delay();
         }
 
         // Wait for the ACK
-        self.clk.set_low();
-        self.dio.set_high();
-        self.clk.set_high();
+        self.clk.set_low()?;
+        self.dio.set_high()?;
+        self.clk.set_high()?;
         for _ in 0..255 {
-            if !self.dio.is_high() {
+            if self.dio.is_low()? {
                 return Ok(());
             }
             self.delay();
@@ -98,21 +109,25 @@ where
         Err(Error::Ack)
     }
 
-    fn start(&mut self) {
-        self.clk.set_low();
-        self.dio.set_high();
-        self.clk.set_high();
+    fn start(&mut self) -> Res<E> {
+        self.clk.set_low()?;
+        self.dio.set_high()?;
+        self.clk.set_high()?;
         self.delay();
-        self.dio.set_low();
+        self.dio.set_low()?;
+
+        Ok(())
     }
 
-    fn stop(&mut self) {
-        self.clk.set_low();
-        self.dio.set_low();
-        self.clk.set_high();
+    fn stop(&mut self) -> Res<E> {
+        self.clk.set_low()?;
+        self.dio.set_low()?;
+        self.clk.set_high()?;
         self.delay();
-        self.dio.set_high();
+        self.dio.set_high()?;
         self.delay();
+
+        Ok(())
     }
 
     fn delay(&mut self) {
@@ -120,7 +135,7 @@ where
     }
 }
 
-const MAX_FREQ_KHZ: u16 = 250;
+const MAX_FREQ_KHZ: u16 = 500;
 const USECS_IN_MSEC: u16 = 1_000;
 const DELAY_USECS: u16 = USECS_IN_MSEC / MAX_FREQ_KHZ;
 
