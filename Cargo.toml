@@ -11,6 +11,10 @@ categories = ["embedded", "hardware-support", "no-std"]
 license = "MIT"
 repository = "https://github.com/igelbox/tm1637-rs"
 edition = "2018"
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+]
 
 [dependencies.embedded-hal]
 features = ["unproven"]
