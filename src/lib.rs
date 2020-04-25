@@ -7,10 +7,18 @@ use hal::blocking::delay::DelayUs;
 use hal::digital::v2::{InputPin, OutputPin};
 
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<E> {
     Ack,
-    IO,
+    IO(E),
 }
+
+impl<E> From<E> for Error<E> {
+    fn from(err: E) -> Error<E> {
+        Error::IO(err)
+    }
+}
+
+type Res<E> = Result<(), Error<E>>;
 
 pub struct TM1637<'a, CLK, DIO, D> {
     clk: &'a mut CLK,
@@ -28,7 +36,7 @@ where
         Self { clk, dio, delay }
     }
 
-    pub fn init(&mut self) -> Result<(), Error> {
+    pub fn init(&mut self) -> Res<E> {
         self.start()?;
         self.send(ADDRESS_AUTO_INCREMENT_1_MODE)?;
         self.stop()?;
@@ -36,15 +44,15 @@ where
         Ok(())
     }
 
-    pub fn clear(&mut self) -> Result<(), Error> {
+    pub fn clear(&mut self) -> Res<E> {
         self.print_raw_iter(0, core::iter::repeat(0).take(4))
     }
 
-    pub fn print_raw(&mut self, address: u8, bytes: &[u8]) -> Result<(), Error> {
+    pub fn print_raw(&mut self, address: u8, bytes: &[u8]) -> Res<E> {
         self.print_raw_iter(address, bytes.iter().map(|b| *b))
     }
 
-    pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Result<(), Error> {
+    pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Res<E> {
         self.print_raw_iter(
             address,
             digits.iter().map(|digit| DIGITS[(digit & 0xf) as usize]),
@@ -55,7 +63,7 @@ where
         &mut self,
         address: u8,
         bytes: Iter,
-    ) -> Result<(), Error> {
+    ) -> Res<E> {
         self.start()?;
         self.send(ADDRESS_COMMAND_BITS | (address & ADDRESS_COMMAND_MASK))?;
         for byte in bytes {
@@ -65,7 +73,7 @@ where
         Ok(())
     }
 
-    pub fn set_brightness(&mut self, level: u8) -> Result<(), Error> {
+    pub fn set_brightness(&mut self, level: u8) -> Res<E> {
         self.start()?;
         self.send(DISPLAY_CONTROL_BRIGHTNESS_BITS | (level & DISPLAY_CONTROL_BRIGHTNESS_MASK))?;
         self.stop()?;
@@ -73,26 +81,26 @@ where
         Ok(())
     }
 
-    fn send(&mut self, byte: u8) -> Result<(), Error> {
+    fn send(&mut self, byte: u8) -> Res<E> {
         let mut rest = byte;
         for _ in 0..8 {
-            self.clk.set_low().map_err(|_| Error::IO).unwrap();
+            self.clk.set_low()?;
             if rest & 1 != 0 {
-                self.dio.set_high().map_err(|_| Error::IO).unwrap();
+                self.dio.set_high()?;
             } else {
-                self.dio.set_low().map_err(|_| Error::IO).unwrap();
+                self.dio.set_low()?;
             }
             rest = rest >> 1;
-            self.clk.set_high().map_err(|_| Error::IO).unwrap();
+            self.clk.set_high()?;
             self.delay();
         }
 
         // Wait for the ACK
-        self.clk.set_low().map_err(|_| Error::IO).unwrap();
-        self.dio.set_high().map_err(|_| Error::IO).unwrap();
-        self.clk.set_high().map_err(|_| Error::IO).unwrap();
+        self.clk.set_low()?;
+        self.dio.set_high()?;
+        self.clk.set_high()?;
         for _ in 0..255 {
-            if self.dio.is_low().map_err(|_| Error::IO).unwrap() {
+            if self.dio.is_low()? {
                 return Ok(());
             }
             self.delay();
@@ -101,22 +109,22 @@ where
         Err(Error::Ack)
     }
 
-    fn start(&mut self) -> Result<(), Error> {
-        self.clk.set_low().map_err(|_| Error::IO).unwrap();
-        self.dio.set_high().map_err(|_| Error::IO).unwrap();
-        self.clk.set_high().map_err(|_| Error::IO).unwrap();
+    fn start(&mut self) -> Res<E> {
+        self.clk.set_low()?;
+        self.dio.set_high()?;
+        self.clk.set_high()?;
         self.delay();
-        self.dio.set_low().map_err(|_| Error::IO).unwrap();
+        self.dio.set_low()?;
 
         Ok(())
     }
 
-    fn stop(&mut self) -> Result<(), Error> {
-        self.clk.set_low().map_err(|_| Error::IO).unwrap();
-        self.dio.set_low().map_err(|_| Error::IO).unwrap();
-        self.clk.set_high().map_err(|_| Error::IO).unwrap();
+    fn stop(&mut self) -> Res<E> {
+        self.clk.set_low()?;
+        self.dio.set_low()?;
+        self.clk.set_high()?;
         self.delay();
-        self.dio.set_high().map_err(|_| Error::IO).unwrap();
+        self.dio.set_high()?;
         self.delay();
 
         Ok(())
