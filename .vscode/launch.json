@@ -1,0 +1,25 @@
+{
+    /*
+     * Requires the Rust Language Server (RLS) and Cortex-Debug extensions
+     * https://marketplace.visualstudio.com/items?itemName=rust-lang.rust
+     * https://marketplace.visualstudio.com/items?itemName=marus25.cortex-debug
+     */
+    "version": "0.2.0",
+    "configurations": [
+        {
+            /* Configuration for the STM32F103C8T6 Blue-Pill board */
+            "type": "cortex-debug",
+            "request": "launch",
+            "name": "Debug (OpenOCD)",
+            "servertype": "openocd",
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": "cargo build",
+            "runToMain": true,
+            "executable": "./target/thumbv7m-none-eabi/debug/examples/main",
+            "configFiles": [
+                "interface/stlink-v2.cfg",
+                "target/stm32f1x.cfg"
+            ],
+        }
+    ]
+}

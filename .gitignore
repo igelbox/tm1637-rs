@@ -1,2 +1,3 @@
+.vscode/.cortex-debug.*
 target/
 Cargo.lock
