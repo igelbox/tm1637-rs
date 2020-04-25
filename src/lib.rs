@@ -18,7 +18,7 @@ pub struct TM1637<'a, CLK, DIO, D> {
     delay: &'a mut D,
 }
 
-impl<'a, E, CLK, DIO, D> TM1637<'a, CLK, DIO, D>
+impl<'a, CLK, DIO, D, E> TM1637<'a, CLK, DIO, D>
 where
     CLK: OutputPin<Error = E>,
     DIO: InputPin<Error = E> + OutputPin<Error = E>,
