@@ -38,17 +38,17 @@ fn main() -> ! {
     let mut delay = Delay::new(cp.SYST, clocks);
 
     let mut delay = NoDelay {}; // remove this line to use the real HW delay
-    let mut tm = TM1637::new(&mut clk, &mut dio, &mut delay);
-    tm.init(); // append `.unwrap()` to catch and handle exceptions in cost of extra ROM size
-    tm.clear();
+    let mut tm = TM1637::new(&mut clk, &mut dio);
+    tm.init(&mut delay); // append `.unwrap()` to catch and handle exceptions in cost of extra ROM size
+    tm.clear(&mut delay);
 
     loop {
         for i in 0..255 {
-            tm.print_hex(0, &[i, i + 1]);
+            tm.print_hex(0, &[i, i + 1], &mut delay);
 
-            tm.print_raw(3, &[i]);
+            tm.print_raw(3, &[i], &mut delay);
 
-            tm.set_brightness(i >> 5);
+            tm.set_brightness(i >> 5, &mut delay);
         }
     }
 }

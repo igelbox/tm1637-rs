@@ -20,10 +20,9 @@ impl<E> From<E> for Error<E> {
 
 type Res<E> = Result<(), Error<E>>;
 
-pub struct TM1637<'a, CLK, DIO, D> {
+pub struct TM1637<'a, CLK, DIO> {
     clk: &'a mut CLK,
     dio: &'a mut DIO,
-    delay: &'a mut D,
 }
 
 enum Bit {
@@ -31,97 +30,98 @@ enum Bit {
     ONE,
 }
 
-impl<'a, CLK, DIO, D, E> TM1637<'a, CLK, DIO, D>
+impl<'a, CLK, DIO, E> TM1637<'a, CLK, DIO>
 where
     CLK: OutputPin<Error = E>,
     DIO: InputPin<Error = E> + OutputPin<Error = E>,
-    D: DelayUs<u16>,
 {
-    pub fn new(clk: &'a mut CLK, dio: &'a mut DIO, delay: &'a mut D) -> Self {
-        Self { clk, dio, delay }
+    pub fn new(clk: &'a mut CLK, dio: &'a mut DIO) -> Self {
+        Self { clk, dio }
     }
 
-    pub fn init(&mut self) -> Res<E> {
-        self.start()?;
-        self.send(ADDRESS_AUTO_INCREMENT_1_MODE)?;
-        self.stop()?;
+    pub fn init<D: DelayUs<u16>>(&mut self, d: &mut D) -> Res<E> {
+        self.start(d)?;
+        self.send(ADDRESS_AUTO_INCREMENT_1_MODE, d)?;
+        self.stop(d)?;
 
         Ok(())
     }
 
-    pub fn clear(&mut self) -> Res<E> {
-        self.print_raw_iter(0, core::iter::repeat(0).take(4))
+    pub fn clear<D: DelayUs<u16>>(&mut self, d: &mut D) -> Res<E> {
+        self.print_raw_iter(0, core::iter::repeat(0).take(4), d)
     }
 
-    pub fn print_raw(&mut self, address: u8, bytes: &[u8]) -> Res<E> {
-        self.print_raw_iter(address, bytes.iter().map(|b| *b))
+    pub fn print_raw<D: DelayUs<u16>>(&mut self, address: u8, bytes: &[u8], d: &mut D) -> Res<E> {
+        self.print_raw_iter(address, bytes.iter().map(|b| *b), d)
     }
 
-    pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Res<E> {
+    pub fn print_hex<D: DelayUs<u16>>(&mut self, address: u8, digits: &[u8], d: &mut D) -> Res<E> {
         self.print_raw_iter(
             address,
             digits.iter().map(|digit| DIGITS[(digit & 0xf) as usize]),
+            d,
         )
     }
 
-    pub fn print_raw_iter<Iter: Iterator<Item = u8>>(
+    pub fn print_raw_iter<Iter: Iterator<Item = u8>, D: DelayUs<u16>>(
         &mut self,
         address: u8,
         bytes: Iter,
+        d: &mut D,
     ) -> Res<E> {
-        self.start()?;
-        self.send(ADDRESS_COMMAND_BITS | (address & ADDRESS_COMMAND_MASK))?;
+        self.start(d)?;
+        self.send(ADDRESS_COMMAND_BITS | (address & ADDRESS_COMMAND_MASK), d)?;
         for byte in bytes {
-            self.send(byte)?;
+            self.send(byte, d)?;
         }
-        self.stop()?;
+        self.stop(d)?;
         Ok(())
     }
 
-    pub fn set_brightness(&mut self, level: u8) -> Res<E> {
-        self.start()?;
-        self.send(DISPLAY_CONTROL_BRIGHTNESS_BITS | (level & DISPLAY_CONTROL_BRIGHTNESS_MASK))?;
-        self.stop()?;
+    pub fn set_brightness<D: DelayUs<u16>>(&mut self, level: u8, d: &mut D) -> Res<E> {
+        self.start(d)?;
+        self.send(DISPLAY_CONTROL_BRIGHTNESS_BITS | (level & DISPLAY_CONTROL_BRIGHTNESS_MASK), d)?;
+        self.stop(d)?;
 
         Ok(())
     }
 
-    fn send(&mut self, byte: u8) -> Res<E> {
+    fn send<D: DelayUs<u16>>(&mut self, byte: u8, d: &mut D) -> Res<E> {
         let mut rest = byte;
         for _ in 0..8 {
             let bit = if rest & 1 != 0 { Bit::ONE } else { Bit::ZERO };
-            self.send_bit_and_delay(bit)?;
+            self.send_bit_and_delay(bit, d)?;
             rest = rest >> 1;
         }
 
         // Wait for the ACK
-        self.send_bit_and_delay(Bit::ONE)?;
+        self.send_bit_and_delay(Bit::ONE, d)?;
         for _ in 0..255 {
             if self.dio.is_low()? {
                 return Ok(());
             }
-            self.delay();
+            self.delay(d);
         }
 
         Err(Error::Ack)
     }
 
-    fn start(&mut self) -> Res<E> {
-        self.send_bit_and_delay(Bit::ONE)?;
+    fn start<D: DelayUs<u16>>(&mut self, d: &mut D) -> Res<E> {
+        self.send_bit_and_delay(Bit::ONE, d)?;
         self.dio.set_low()?;
 
         Ok(())
     }
 
-    fn stop(&mut self) -> Res<E> {
-        self.send_bit_and_delay(Bit::ZERO)?;
+    fn stop<D: DelayUs<u16>>(&mut self, d: &mut D) -> Res<E> {
+        self.send_bit_and_delay(Bit::ZERO, d)?;
         self.dio.set_high()?;
-        self.delay();
+        self.delay(d);
 
         Ok(())
     }
 
-    fn send_bit_and_delay(&mut self, value: Bit) -> Res<E> {
+    fn send_bit_and_delay<D: DelayUs<u16>>(&mut self, value: Bit, d: &mut D) -> Res<E> {
         self.clk.set_low()?;
         if let Bit::ONE = value {
             self.dio.set_high()?;
@@ -129,13 +129,13 @@ where
             self.dio.set_low()?;
         }
         self.clk.set_high()?;
-        self.delay();
+        self.delay(d);
 
         Ok(())
     }
 
-    fn delay(&mut self) {
-        self.delay.delay_us(DELAY_USECS);
+    fn delay<D: DelayUs<u16>>(&mut self, d: &mut D) {
+        d.delay_us(DELAY_USECS);
     }
 }
 
