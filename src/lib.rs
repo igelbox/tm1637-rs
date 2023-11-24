@@ -57,6 +57,11 @@ where
         self.print_raw_iter(address, bytes.iter().map(|b| *b))
     }
 
+    pub fn print_chars(&mut self, address: u8, chars: &[char]) -> Res<E> {
+        self.print_raw_iter(address, chars.iter().map(|b| char_to_raw(*b)))?;
+        Ok(())
+    }
+
     pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Res<E> {
         self.print_raw_iter(
             address,
