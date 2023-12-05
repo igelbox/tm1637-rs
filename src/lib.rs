@@ -101,6 +101,7 @@ where
                 return Ok(());
             }
             self.delay();
+            self.delay();
         }
 
         Err(Error::Ack)
@@ -117,6 +118,7 @@ where
         self.send_bit_and_delay(Bit::ZERO)?;
         self.dio.set_high()?;
         self.delay();
+        self.delay();
 
         Ok(())
     }
@@ -128,6 +130,7 @@ where
         } else {
             self.dio.set_low()?;
         }
+        self.delay();
         self.clk.set_high()?;
         self.delay();
 
@@ -141,7 +144,7 @@ where
 
 const MAX_FREQ_KHZ: u16 = 500;
 const USECS_IN_MSEC: u16 = 1_000;
-const DELAY_USECS: u16 = USECS_IN_MSEC / MAX_FREQ_KHZ;
+const DELAY_USECS: u16 = USECS_IN_MSEC.div_ceil(MAX_FREQ_KHZ * 2);
 
 const ADDRESS_AUTO_INCREMENT_1_MODE: u8 = 0x40;
 
