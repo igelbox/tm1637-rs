@@ -125,12 +125,12 @@ where
 
     fn send_bit_and_delay(&mut self, value: Bit) -> Res<E> {
         self.clk.set_low()?;
+        self.delay();
         if let Bit::ONE = value {
             self.dio.set_high()?;
         } else {
             self.dio.set_low()?;
         }
-        self.delay();
         self.clk.set_high()?;
         self.delay();
 
