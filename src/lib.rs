@@ -57,6 +57,7 @@ where
         self.print_raw_iter(address, bytes.iter().map(|b| *b))
     }
 
+    #[cfg(feature = "chars")]
     pub fn print_chars(&mut self, address: u8, chars: &[char]) -> Res<E> {
         self.print_raw_iter(address, chars.iter().map(|b| char_to_raw(*b)))?;
         Ok(())
@@ -163,6 +164,7 @@ const DIGITS: [u8; 16] = [
     0x39, 0x5e, 0x79, 0x71, //
 ];
 
+#[cfg(feature = "chars")]
 fn char_to_raw(c: char) -> u8 {
     match c {
         'a' | 'A' => 0x77,
