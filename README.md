@@ -5,6 +5,7 @@
 [![Released API docs](https://docs.rs/tm1637/badge.svg)](https://docs.rs/tm1637)
 
 ## Features
+- Printing Chars, HEX digits and RAW digits
 - Formatting number as HEX-digits
 - Controlling each particular segment using a bitmask
 - Brightness control

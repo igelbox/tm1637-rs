@@ -57,6 +57,12 @@ where
         self.print_raw_iter(address, bytes.iter().map(|b| *b))
     }
 
+    #[cfg(feature = "chars")]
+    pub fn print_chars(&mut self, address: u8, chars: &[char]) -> Res<E> {
+        self.print_raw_iter(address, chars.iter().map(|b| char_to_raw(*b)))?;
+        Ok(())
+    }
+
     pub fn print_hex(&mut self, address: u8, digits: &[u8]) -> Res<E> {
         self.print_raw_iter(
             address,
@@ -157,3 +163,36 @@ const DIGITS: [u8; 16] = [
     0x7f, 0x6f, 0x77, 0x7c, //
     0x39, 0x5e, 0x79, 0x71, //
 ];
+
+#[cfg(feature = "chars")]
+fn char_to_raw(c: char) -> u8 {
+    match c {
+        'a' | 'A' => 0x77,
+        'b' | 'B' => 0x7c,
+        'c' | 'C' => 0x58,
+        'd' | 'D' => 0x5e,
+        'e' | 'E' => 0x79,
+        'f' | 'F' => 0x71,
+        'g' | 'G' => 0x3d,
+        'h' | 'H' => 0x74,
+        'i' | 'I' => 0x30,
+        'j' | 'J' => 0x1e,
+        'k' | 'K' => 0x75,
+        'l' | 'L' => 0x38,
+        'm' | 'M' => 0x55,
+        'n' | 'N' => 0x54,
+        'o' | 'O' => 0x5c,
+        'p' | 'P' => 0x73,
+        'q' | 'Q' => 0x67,
+        'r' | 'R' => 0x50,
+        's' | 'S' => 0x6d,
+        't' | 'T' => 0x78,
+        'u' | 'U' => 0x3e,
+        'v' | 'V' => 0x3e,
+        'w' | 'W' => 0x6a,
+        'x' | 'X' => 0x14,
+        'y' | 'Y' => 0x6e,
+        'z' | 'Z' => 0x5b,
+        _ => 0x00,
+    }
+}
